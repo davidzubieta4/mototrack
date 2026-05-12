@@ -94,4 +94,106 @@
 
 <div class="page" id="pg-moto">
   <button onclick="location.reload()" style="background:none; border:none; color:var(--mu); cursor:pointer; padding:10px 0;">‹ Volver</button>
-  <div class="badge
+  <div class="badge off" id="m-badge">GPS Apagado</div>
+  
+  <div class="share" id="m-share" style="display:none">
+    <div style="font-size:11px; color:var(--mu);">CÓDIGO PARA COMPARTIR:</div>
+    <div class="share-code" id="m-code">------</div>
+    <button class="btn-big go" onclick="copyCode()" style="padding:10px; font-size:12px;">📋 COPIAR CÓDIGO</button>
+  </div>
+
+  <div class="icard"><div class="speed-num" id="m-speed">0</div><div style="text-align:center; font-size:11px; color:var(--mu);">KM / H</div></div>
+  
+  <div class="icard" style="font-size:13px;">
+    <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Precisión:</span><span id="m-acc">—</span></div>
+    <div style="display:flex; justify-content:space-between;"><span>Espectadores:</span><span id="m-viewers">0</span></div>
+  </div>
+
+  <button class="btn-big go" id="m-btn" onclick="toggleGPS()">🚀 INICIAR GPS</button>
+</div>
+
+<div class="page" id="pg-view">
+  <button onclick="location.reload()" style="background:none; border:none; color:var(--mu); cursor:pointer; padding:10px 0;">‹ Volver</button>
+  <div id="v-input-area">
+    <input type="text" id="v-code-input" placeholder="CÓDIGO" style="width:100%; padding:15px; border-radius:10px; border:2px solid var(--or); background:none; color:var(--or); text-align:center; font-family:'Orbitron'; font-size:24px; margin-bottom:15px;">
+    <button class="btn-big go" onclick="connectViewer()">🔍 CONECTAR</button>
+  </div>
+  <div class="map-wrap" id="v-map-area" style="display:none; margin-top:15px;">
+    <iframe id="v-iframe" width="100%" height="100%" frameborder="0"></iframe>
+  </div>
+</div>
+
+<script>
+let myPeer = null, watchId = null, tracking = false, connections = [];
+let lastLat = null, lastLng = null;
+
+function goMoto() { 
+  document.getElementById('pg-home').classList.remove('active');
+  document.getElementById('pg-moto').classList.add('active');
+  const code = Math.random().toString(36).substring(2,8).toUpperCase();
+  document.getElementById('m-code').innerText = code;
+  myPeer = new Peer('MOTO-'+code);
+  myPeer.on('connection', conn => {
+    conn.on('open', () => {
+      connections.push(conn);
+      document.getElementById('m-viewers').innerText = connections.length;
+      if(lastLat) conn.send({lat:lastLat, lng:lastLng, speed:document.getElementById('m-speed').innerText});
+    });
+  });
+}
+
+function toggleGPS() {
+  if(!tracking) {
+    if(!navigator.geolocation) return alert("No soporta GPS");
+    watchId = navigator.geolocation.watchPosition(
+      (p) => {
+        tracking = true;
+        document.getElementById('m-btn').innerText = "⛔ DETENER GPS";
+        document.getElementById('m-btn').className = "btn-big stop";
+        document.getElementById('m-badge').innerText = "🟢 GPS ACTIVO";
+        document.getElementById('m-badge').className = "badge on";
+        document.getElementById('m-share').style.display = "block";
+        
+        const {latitude:lat, longitude:lng, speed, accuracy} = p.coords;
+        lastLat = lat; lastLng = lng;
+        const kmh = speed ? Math.round(speed * 3.6) : 0;
+        document.getElementById('m-speed').innerText = kmh;
+        document.getElementById('m-acc').innerText = Math.round(accuracy) + " m";
+        
+        connections.forEach(c => c.send({lat, lng, speed:kmh}));
+      },
+      (e) => {
+        if(e.code === 1) document.getElementById('modal-ayuda').style.display = 'flex';
+      },
+      {enableHighAccuracy:true}
+    );
+  } else {
+    navigator.geolocation.clearWatch(watchId);
+    location.reload();
+  }
+}
+
+function goViewer() {
+  document.getElementById('pg-home').classList.remove('active');
+  document.getElementById('pg-view').classList.add('active');
+}
+
+function connectViewer() {
+  const code = document.getElementById('v-code-input').value.toUpperCase();
+  myPeer = new Peer();
+  const conn = myPeer.connect('MOTO-'+code);
+  conn.on('data', data => {
+    document.getElementById('v-input-area').style.display = 'none';
+    document.getElementById('v-map-area').style.display = 'block';
+    // Uso de z=19 para mayor acercamiento como sugerimos
+    document.getElementById('v-iframe').src = `https://maps.google.com/maps?q=${data.lat},${data.lng}&z=19&output=embed`;
+  });
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(document.getElementById('m-code').innerText);
+  alert("Código copiado");
+}
+</script>
+</body>
+</html>
