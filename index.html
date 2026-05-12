@@ -5,703 +5,80 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
   <title>MotoTrack GPS</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet"/>
-  <!-- PeerJS — CDN principal jsDelivr, fallback unpkg -->
   <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
-  <script>
-    if (typeof Peer === 'undefined') {
-      document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');
-    }
-  </script>
-
   <style>
-    :root {
-      --or: #FF6B00; --or2: #FF9500;
-      --dk: #080808; --dk2: #111; --dk3: #1A1A1A;
-      --gr: #00FF88; --rd: #FF3355;
-      --tx: #EBEBEB; --mu: #555;
+    /* Estilos base existentes */
+    :root { --or: #FF6B00; --dk: #080808; --tx: #EBEBEB; --mu: #555; --rd: #FF3355; }
+    body { background:var(--dk); color:var(--tx); font-family:'Rajdhani',sans-serif; margin:0; display:flex; flex-direction:column; align-items:center; }
+    
+    /* Nueva Ventana de Ayuda para Permisos */
+    #modal-ayuda {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9);
+      z-index:100; padding:20px; flex-direction:column; justify-content:center;
     }
-    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-
-    body {
-      background:var(--dk);
-      color:var(--tx);
-      font-family:'Rajdhani',sans-serif;
-      min-height:100dvh;
-      display:flex; flex-direction:column; align-items:center;
-      overflow-x:hidden;
-    }
-
-    /* grid bg */
-    body::before {
-      content:''; position:fixed; inset:0;
-      background-image:
-        linear-gradient(rgba(255,107,0,.04) 1px,transparent 1px),
-        linear-gradient(90deg,rgba(255,107,0,.04) 1px,transparent 1px);
-      background-size:44px 44px;
-      pointer-events:none; z-index:0;
-    }
-
-    /* ── HEADER ── */
-    header {
-      width:100%; padding:16px 20px 12px;
-      display:flex; align-items:center; gap:10px;
-      border-bottom:1px solid rgba(255,107,0,.2);
-      background:rgba(8,8,8,.97); position:sticky; top:0; z-index:20;
-    }
-    .logo { font-family:'Orbitron',monospace; font-size:17px; font-weight:900;
-      color:var(--or); letter-spacing:2px;
-      text-shadow:0 0 18px rgba(255,107,0,.45); }
-    .logo span { color:var(--tx); font-weight:400; }
-
-    /* ── PAGES ── */
-    .page {
-      width:100%; max-width:460px;
-      padding:0 18px 50px;
-      position:relative; z-index:5;
-      display:none; flex-direction:column; align-items:center;
-    }
-    .page.active { display:flex; }
-
-    /* ── HOME ── */
-    .hero { text-align:center; padding:36px 0 28px; }
-    .hero-icon { font-size:70px; display:block;
-      animation:float 3s ease-in-out infinite;
-      filter:drop-shadow(0 0 20px rgba(255,107,0,.4)); }
-    @keyframes float{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-    .hero-title {
-      font-family:'Orbitron',monospace; font-size:24px; font-weight:900;
-      margin-top:16px;
-      background:linear-gradient(135deg,var(--or),#FFD700);
-      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-    }
-    .hero-sub { color:var(--mu); font-size:14px; margin-top:5px; }
-
-    .sec-title {
-      font-family:'Orbitron',monospace; font-size:11px; letter-spacing:3px;
-      color:var(--or); opacity:.65; text-transform:uppercase;
-      margin:26px 0 12px; width:100%;
-    }
-
-    /* ── CARDS ── */
-    .cards { width:100%; display:flex; flex-direction:column; gap:12px; }
-    .card {
-      background:var(--dk3);
-      border:1px solid rgba(255,107,0,.15);
-      border-radius:16px; padding:20px 18px;
-      cursor:pointer; transition:all .22s;
-      display:flex; align-items:center; gap:14px; position:relative; overflow:hidden;
-    }
-    .card::before { content:''; position:absolute; inset:0; opacity:0;
-      background:linear-gradient(135deg,rgba(255,107,0,.07),transparent);
-      transition:opacity .22s; }
-    .card:hover::before,.card:active::before { opacity:1; }
-    .card:hover { border-color:rgba(255,107,0,.5); transform:translateY(-2px); }
-    .card:active { transform:scale(.97); }
-    .card-em { font-size:38px; flex-shrink:0; }
-    .card-info { flex:1; }
-    .card-ttl { font-family:'Orbitron',monospace; font-size:13px; font-weight:700; color:var(--or); }
-    .card-dsc { font-size:12px; color:var(--mu); margin-top:3px; line-height:1.4; }
-    .card-arr { color:var(--or); font-size:20px; opacity:.6; }
-
-    /* ── STATUS BADGE ── */
-    .badge {
-      display:flex; align-items:center; gap:7px;
-      padding:9px 16px; border-radius:50px;
-      font-size:12px; font-weight:700; letter-spacing:.5px;
-      border:1px solid; width:fit-content; margin:0 auto 18px;
-    }
-    .badge.off { background:rgba(255,51,85,.1); border-color:rgba(255,51,85,.3); color:var(--rd); }
-    .badge.on  { background:rgba(0,255,136,.1); border-color:rgba(0,255,136,.3); color:var(--gr); }
-    .badge.wt  { background:rgba(255,107,0,.1); border-color:rgba(255,107,0,.3); color:var(--or); }
-    .dot { width:8px; height:8px; border-radius:50%; background:currentColor; }
-    .dot.blink { animation:blink 1.1s ease-in-out infinite; }
-    @keyframes blink{ 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.65)} }
-
-    /* ── BUTTONS ── */
-    .btn-big {
-      width:100%; padding:17px; border-radius:13px; border:none;
-      font-family:'Orbitron',monospace; font-size:14px; font-weight:700; letter-spacing:2px;
-      cursor:pointer; transition:all .22s;
-    }
-    .btn-big.go  { background:linear-gradient(135deg,var(--or),var(--or2)); color:#000;
-      box-shadow:0 4px 22px rgba(255,107,0,.35); }
-    .btn-big.go:hover { box-shadow:0 6px 30px rgba(255,107,0,.55); transform:translateY(-1px); }
-    .btn-big.stop { background:rgba(255,51,85,.12); color:var(--rd); border:2px solid rgba(255,51,85,.4); }
-    .btn-big.stop:hover { background:rgba(255,51,85,.22); }
-    .btn-big.maps { background:linear-gradient(135deg,#1a73e8,#0d47a1); color:#fff;
-      box-shadow:0 4px 22px rgba(26,115,232,.35); margin-top:12px; }
-    .btn-big:active { transform:scale(.97); }
-    .btn-big:disabled { opacity:.4; cursor:not-allowed; }
-
-    /* ── INFO CARD ── */
-    .icard {
-      background:var(--dk3); border:1px solid rgba(255,107,0,.1);
-      border-radius:13px; padding:16px; width:100%; margin-bottom:12px;
-    }
-    .irow { display:flex; justify-content:space-between; align-items:center; padding:5px 0; }
-    .irow+.irow { border-top:1px solid rgba(255,255,255,.04); }
-    .ilbl { font-size:11px; color:var(--mu); letter-spacing:.4px; text-transform:uppercase; }
-    .ival { font-family:'Orbitron',monospace; font-size:12px; color:var(--tx); }
-    .ival.ok { color:var(--gr); } .ival.warn { color:var(--or); }
-
-    /* ── SPEED ── */
-    .speed-box { text-align:center; padding:22px 0 16px; }
-    .speed-num { font-family:'Orbitron',monospace; font-size:56px; font-weight:900;
-      color:var(--or); text-shadow:0 0 28px rgba(255,107,0,.4); line-height:1; }
-    .speed-unit { font-size:11px; color:var(--mu); letter-spacing:3px; margin-top:2px; }
-
-    /* ── SHARE BOX ── */
-    .share {
-      background:var(--dk2); border:1px dashed rgba(255,107,0,.3);
-      border-radius:13px; padding:16px; width:100%; margin-bottom:12px;
-    }
-    .share-lbl { font-size:11px; color:var(--mu); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
-    .share-code {
-      font-family:'Orbitron',monospace; font-size:26px; font-weight:900;
-      color:var(--or); text-align:center; letter-spacing:6px;
-      text-shadow:0 0 20px rgba(255,107,0,.4);
-      padding:10px 0;
-    }
-    .share-hint { font-size:12px; color:var(--mu); text-align:center; margin-bottom:10px; }
-
-    /* ── CODE INPUT ── */
-    .code-wrap { width:100%; margin-bottom:14px; }
-    .code-input {
-      width:100%; padding:16px; border-radius:12px;
-      border:2px solid rgba(255,107,0,.3); background:var(--dk2);
-      color:var(--or); font-family:'Orbitron',monospace;
-      font-size:28px; font-weight:700; letter-spacing:8px;
-      text-align:center; text-transform:uppercase;
-      outline:none; transition:border-color .2s;
-    }
-    .code-input:focus { border-color:var(--or); box-shadow:0 0 0 3px rgba(255,107,0,.15); }
-    .code-input::placeholder { color:rgba(255,107,0,.25); letter-spacing:4px; font-size:22px; }
-
-    /* ── MAP ── */
-    .map-wrap {
-      width:100%; height:320px; border-radius:13px;
-      border:1px solid rgba(255,107,0,.2);
-      overflow:hidden; margin-bottom:12px; position:relative;
-    }
-    .map-wrap iframe { width:100%; height:100%; border:none; }
-    .map-empty {
-      width:100%; height:100%;
-      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
-      background:var(--dk3); color:var(--mu); font-size:13px; text-align:center; padding:20px;
-    }
-    .map-empty .big { font-size:44px; opacity:.35; }
-
-    /* ── SPIN ── */
-    .spin {
-      width:48px; height:48px; border-radius:50%;
-      border:3px solid rgba(255,107,0,.12); border-top-color:var(--or);
-      animation:spin 1s linear infinite; margin:14px auto;
-    }
-    @keyframes spin{ to{transform:rotate(360deg)} }
-
-    /* ── ALERTS ── */
-    .alert { width:100%; padding:11px 14px; border-radius:10px; font-size:13px; margin-bottom:12px; display:none; }
-    .alert.err { background:rgba(255,51,85,.1); border:1px solid rgba(255,51,85,.3); color:#FF7799; display:block; }
-    .alert.inf { background:rgba(255,107,0,.1); border:1px solid rgba(255,107,0,.3); color:var(--or); display:block; }
-    .alert.suc { background:rgba(0,255,136,.1); border:1px solid rgba(0,255,136,.3); color:var(--gr); display:block; }
-
-    /* ── BACK ── */
-    .back { display:flex; align-items:center; gap:5px; color:var(--mu); font-size:13px;
-      cursor:pointer; padding:4px 0; margin:14px 0 2px; width:100%;
-      background:none; border:none; font-family:'Rajdhani',sans-serif;
-      transition:color .2s; }
-    .back:hover { color:var(--or); }
-
-    /* ── COPY BTN ── */
-    .copybtn {
-      width:100%; padding:10px; border-radius:9px;
-      border:1px solid rgba(255,107,0,.35); background:rgba(255,107,0,.07);
-      color:var(--or); font-size:13px; font-weight:700;
-      cursor:pointer; transition:all .2s; letter-spacing:.8px;
-      font-family:'Rajdhani',sans-serif;
-    }
-    .copybtn:hover { background:rgba(255,107,0,.16); }
-    .copybtn.ok { background:rgba(0,255,136,.08); color:var(--gr); border-color:rgba(0,255,136,.35); }
-
-    /* ── STEP GUIDE ── */
-    .step { display:flex; gap:12px; margin-bottom:10px; }
-    .step-num {
-      width:28px; height:28px; border-radius:50%; flex-shrink:0;
-      background:rgba(255,107,0,.15); border:1px solid rgba(255,107,0,.35);
-      display:flex; align-items:center; justify-content:center;
-      font-family:'Orbitron',monospace; font-size:12px; color:var(--or);
-    }
-    .step-text { font-size:13px; color:var(--tx); line-height:1.5; padding-top:4px; }
-    .step-text b { color:var(--or); }
-
-    /* Conexión estado peer */
-    .peer-bar {
-      display:flex; align-items:center; gap:8px;
-      font-size:11px; color:var(--mu); letter-spacing:.4px;
-      margin-bottom:14px;
-    }
-    .peer-led { width:7px; height:7px; border-radius:50%; background:var(--mu); }
-    .peer-led.on { background:var(--gr); box-shadow:0 0 8px rgba(0,255,136,.5); }
-    .peer-led.blink { background:var(--or); animation:blink 1s infinite; }
+    .ayuda-card { background:#1A1A1A; padding:20px; border-radius:15px; border:1px solid var(--or); text-align:center; }
+    .ayuda-pasos { text-align:left; margin:15px 0; font-size:14px; }
+    .btn-cerrar { background:var(--or); color:#000; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer; }
+    
+    /* ... (resto de tus estilos de mototrack-peerjs.html) ... */
+    .btn-big { width:100%; padding:17px; border-radius:13px; border:none; font-family:'Orbitron',monospace; font-size:14px; font-weight:700; cursor:pointer; margin-top:10px;}
+    .go { background:var(--or); color:#000; }
   </style>
 </head>
 <body>
 
-<header>
-  <span style="font-size:22px">🏍️</span>
-  <div class="logo">MOTO<span>TRACK</span></div>
-  <div class="peer-bar" style="margin-left:auto;margin-bottom:0">
-    <div class="peer-led" id="net-led"></div>
-    <span id="net-txt">Conectando…</span>
-  </div>
-</header>
-
-<!-- ══════════════════════════════════════ HOME ══ -->
-<div class="page active" id="pg-home">
-  <div class="hero">
-    <span class="hero-icon">🏍️</span>
-    <div class="hero-title">MotoTrack GPS</div>
-    <div class="hero-sub">Comparte tu posición en tiempo real · Sin registro</div>
-  </div>
-
-  <div class="sec-title">¿Cómo funciona?</div>
-  <div class="icard" style="margin-bottom:20px">
-    <div class="step">
-      <div class="step-num">1</div>
-      <div class="step-text">El repartidor pulsa <b>Soy el Repartidor</b> y activa su GPS</div>
+<div id="modal-ayuda">
+  <div class="ayuda-card">
+    <h3>⚠️ GPS Bloqueado</h3>
+    <div class="ayuda-pasos">
+      <p>1. Toca el icono del <b>candado 🔒</b> o los <b>ajustes</b> junto a la dirección web.</p>
+      <p>2. Busca <b>"Ubicación"</b> y cámbialo a <b>"Permitir"</b>.</p>
+      <p>3. Recarga la página para activar el rastreo.</p>
     </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-text">Aparece un <b>código de 6 letras</b> — se lo manda a su esposa/cliente</div>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-text">La esposa/cliente pulsa <b>Ver en el Mapa</b>, ingresa el código y ve la posición en vivo</div>
-    </div>
-  </div>
-
-  <div class="cards">
-    <div class="card" onclick="goMoto()">
-      <span class="card-em">🏍️</span>
-      <div class="card-info">
-        <div class="card-ttl">Soy el Repartidor</div>
-        <div class="card-dsc">Activo mi GPS y genero un código para compartir</div>
-      </div>
-      <span class="card-arr">›</span>
-    </div>
-    <div class="card" onclick="goViewer()">
-      <span class="card-em">📍</span>
-      <div class="card-info">
-        <div class="card-ttl">Ver en el Mapa</div>
-        <div class="card-dsc">Ingresa el código del repartidor y ve su posición</div>
-      </div>
-      <span class="card-arr">›</span>
-    </div>
+    <button class="btn-cerrar" onclick="cerrarAyuda()">ENTENDIDO</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════ MOTO ══ -->
-<div class="page" id="pg-moto">
-  <button class="back" onclick="goHome()">‹ Volver</button>
-  <div class="sec-title">Panel del Repartidor 🏍️</div>
-
-  <div class="badge off" id="m-badge">
-    <div class="dot" id="m-dot"></div>
-    <span id="m-badge-txt">GPS Apagado</span>
-  </div>
-
-  <div id="m-alert" class="alert"></div>
-
-  <!-- Código para compartir -->
-  <div class="share" id="m-share" style="display:none">
-    <div class="share-lbl">🔗 Tu código — mándalo por WhatsApp</div>
-    <div class="share-code" id="m-code">------</div>
-    <div class="share-hint">Tu esposa/cliente ingresa este código para verte en el mapa</div>
-    <button class="copybtn" id="m-copybtn" onclick="copyCode()">📋 Copiar código</button>
-  </div>
-
-  <!-- Speed -->
-  <div class="icard speed-box">
-    <div class="speed-num" id="m-speed">0</div>
-    <div class="speed-unit">KM / H</div>
-  </div>
-
-  <!-- Coords -->
-  <div class="icard">
-    <div class="irow"><span class="ilbl">Latitud</span><span class="ival" id="m-lat">—</span></div>
-    <div class="irow"><span class="ilbl">Longitud</span><span class="ival" id="m-lng">—</span></div>
-    <div class="irow"><span class="ilbl">Precisión</span><span class="ival" id="m-acc">—</span></div>
-    <div class="irow"><span class="ilbl">Actualizado</span><span class="ival warn" id="m-time">—</span></div>
-    <div class="irow"><span class="ilbl">Espectadores</span><span class="ival ok" id="m-viewers">0</span></div>
-  </div>
-
-  <button class="btn-big go" id="m-btn" onclick="toggleGPS()">🚀 INICIAR GPS</button>
+<div class="page active" id="pg-moto" style="padding:20px; width:100%; max-width:400px;">
+  <h2 style="color:var(--or)">Panel Repartidor</h2>
+  <div id="m-status" style="margin:10px 0; font-size:12px; color:var(--mu);">Estado: Esperando acción...</div>
+  <button class="btn-big go" onclick="intentarIniciarGPS()">🚀 INICIAR GPS</button>
 </div>
 
-<!-- ══════════════════════════════════════ VIEWER ══ -->
-<div class="page" id="pg-view">
-  <button class="back" onclick="goHome()">‹ Volver</button>
-  <div class="sec-title">Ver Repartidor en Mapa 📍</div>
-
-  <div class="badge wt" id="v-badge" style="margin-bottom:14px">
-    <div class="dot blink" id="v-dot"></div>
-    <span id="v-badge-txt">Esperando código…</span>
-  </div>
-
-  <div id="v-alert" class="alert"></div>
-
-  <!-- Code input -->
-  <div class="code-wrap" id="v-code-wrap">
-    <div class="share-lbl" style="margin-bottom:8px;font-size:11px;color:var(--mu);letter-spacing:1px;text-transform:uppercase">
-      Ingresa el código del repartidor
-    </div>
-    <input class="code-input" id="v-code-input" maxlength="6"
-      placeholder="ABC123" autocomplete="off" autocorrect="off"
-      spellcheck="false" inputmode="text"
-      oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
-      onkeydown="if(event.key==='Enter') connectViewer()"/>
-    <button class="btn-big go" style="margin-top:10px" onclick="connectViewer()">🔍 CONECTAR</button>
-  </div>
-
-  <!-- Spinner while connecting -->
-  <div id="v-spin" style="display:none"><div class="spin"></div></div>
-
-  <!-- Map -->
-  <div class="map-wrap">
-    <div class="map-empty" id="v-map-empty">
-      <div class="big">🗺️</div>
-      <div>El mapa aparece cuando el repartidor active su GPS y te conectes con su código</div>
-    </div>
-    <iframe id="v-map-iframe" style="display:none" allowfullscreen></iframe>
-  </div>
-
-  <!-- Info -->
-  <div class="icard">
-    <div class="irow"><span class="ilbl">Velocidad</span><span class="ival" id="v-speed">—</span></div>
-    <div class="irow"><span class="ilbl">Precisión</span><span class="ival" id="v-acc">—</span></div>
-    <div class="irow"><span class="ilbl">Última señal</span><span class="ival warn" id="v-time">—</span></div>
-    <div class="irow"><span class="ilbl">Estado</span><span class="ival ok" id="v-state">Desconectado</span></div>
-  </div>
-
-  <button class="btn-big maps" id="v-maps-btn" style="display:none" onclick="openGMaps()">
-    🗺️ ABRIR EN GOOGLE MAPS
-  </button>
-</div>
-
-<!-- ══════════════════════════════════════ SCRIPTS ══ -->
 <script>
-// ═══════════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════════
-let myPeer   = null;   // nuestro Peer
-let watchId  = null;   // geolocation watch
-let tracking = false;
-let connections = [];  // conexiones entrantes (viewers)
-let viewerConn  = null; // conexión saliente (viewer)
-let myCode = '';
-let lastLat = null, lastLng = null;
-
-const PEER_CFG = {
-  host: '0.peerjs.com',
-  port: 443,
-  path: '/',
-  secure: true,
-  pingInterval: 5000,
-  config: { iceServers: [
-    { urls:'stun:stun.l.google.com:19302' },
-    { urls:'stun:stun1.l.google.com:19302' }
-  ]}
-};
-
-// ═══════════════════════════════════════════════════
-//  INIT PEER
-// ═══════════════════════════════════════════════════
-function initPeer(customId) {
-  return new Promise((resolve, reject) => {
-    const p = customId
-      ? new Peer(customId, PEER_CFG)
-      : new Peer(PEER_CFG);
-
-    p.on('open', id => {
-      setNetStatus(true);
-      resolve(p);
-    });
-    p.on('error', e => {
-      setNetStatus(false);
-      reject(e);
-    });
-    p.on('disconnected', () => {
-      setNetStatus(false);
-      setTimeout(() => p.reconnect(), 3000);
-    });
-  });
-}
-
-function setNetStatus(ok) {
-  document.getElementById('net-led').className = 'peer-led' + (ok?' on':'');
-  document.getElementById('net-txt').textContent = ok ? 'En línea' : 'Reconectando…';
-}
-
-// ═══════════════════════════════════════════════════
-//  NAVIGATION
-// ═══════════════════════════════════════════════════
-function goPage(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  window.scrollTo(0, 0);
-}
-function goHome() {
-  cleanup();
-  goPage('pg-home');
-}
-
-async function goMoto() {
-  goPage('pg-moto');
-  // Generate short code: 6 alphanumeric
-  const code = randomCode();
-  myCode = code;
-  document.getElementById('m-code').textContent = code;
-  try {
-    myPeer = await initPeer('MOTO-' + code);
-    myPeer.on('connection', onViewerConnect);
-    showAlert('m-alert','✅ Listo. Activa tu GPS y comparte el código.','suc');
-  } catch(e) {
-    showAlert('m-alert','⚠️ No se pudo conectar al servidor PeerJS. Verifica tu internet.','err');
-  }
-}
-
-async function goViewer() {
-  goPage('pg-view');
-  setViewBadge('wt','Ingresa el código');
-}
-
-// ═══════════════════════════════════════════════════
-//  MOTO: GPS
-// ═══════════════════════════════════════════════════
-function toggleGPS() {
-  if (!tracking) startGPS(); else stopGPS();
-}
-
-function startGPS() {
+// FUNCIÓN PARA VERIFICAR PERMISOS
+async function intentarIniciarGPS() {
   if (!navigator.geolocation) {
-    showAlert('m-alert','❌ Este navegador no soporta GPS.','err'); return;
+    alert("Tu navegador no soporta GPS.");
+    return;
   }
-  hideAlert('m-alert');
-  setMotoBadge('wt','Obteniendo señal GPS…');
-  watchId = navigator.geolocation.watchPosition(onPos, onGeoErr,
-    { enableHighAccuracy:true, maximumAge:4000, timeout:15000 });
-  tracking = true;
-  document.getElementById('m-btn').textContent = '⛔ DETENER GPS';
-  document.getElementById('m-btn').className = 'btn-big stop';
-  document.getElementById('m-share').style.display = 'block';
-}
-
-function stopGPS() {
-  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-  watchId = null; tracking = false;
-  setMotoBadge('off','GPS Apagado');
-  document.getElementById('m-btn').textContent = '🚀 INICIAR GPS';
-  document.getElementById('m-btn').className = 'btn-big go';
-  document.getElementById('m-speed').textContent = '0';
-  document.getElementById('m-lat').textContent = '—';
-  document.getElementById('m-lng').textContent = '—';
-  document.getElementById('m-acc').textContent = '—';
-  document.getElementById('m-time').textContent = '—';
-  lastLat = lastLng = null;
-}
-
-function onPos(pos) {
-  const { latitude:lat, longitude:lng, accuracy, speed } = pos.coords;
-  lastLat = lat; lastLng = lng;
-  const kmh = speed ? (speed*3.6).toFixed(0) : 0;
-  const now  = new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-
-  document.getElementById('m-lat').textContent   = lat.toFixed(6);
-  document.getElementById('m-lng').textContent   = lng.toFixed(6);
-  document.getElementById('m-acc').textContent   = Math.round(accuracy)+' m';
-  document.getElementById('m-speed').textContent = kmh;
-  document.getElementById('m-time').textContent  = now;
-  setMotoBadge('on','🟢 GPS Activo');
-
-  const payload = { lat, lng, speed:kmh, acc:Math.round(accuracy), time:now };
-  // Broadcast to all viewers
-  connections = connections.filter(c => c.open);
-  connections.forEach(c => { try { c.send(payload); } catch(e){} });
-  document.getElementById('m-viewers').textContent = connections.length;
-}
-
-function onGeoErr(e) {
-  const msg = {1:'GPS denegado. Actívalo en Ajustes.',2:'Señal no disponible.',3:'Tiempo agotado.'}[e.code]||'Error GPS';
-  showAlert('m-alert','⚠️ '+msg,'err');
-  setMotoBadge('off','Error GPS');
-}
-
-function onViewerConnect(conn) {
-  conn.on('open', () => {
-    connections.push(conn);
-    document.getElementById('m-viewers').textContent = connections.length;
-    // Send last known position immediately
-    if (lastLat !== null) {
-      conn.send({
-        lat:lastLat, lng:lastLng,
-        speed: document.getElementById('m-speed').textContent,
-        acc:   document.getElementById('m-acc').textContent,
-        time:  document.getElementById('m-time').textContent
-      });
-    }
-  });
-  conn.on('close', () => {
-    connections = connections.filter(c => c.open);
-    document.getElementById('m-viewers').textContent = connections.length;
-  });
-}
-
-function setMotoBadge(state, txt) {
-  const b = document.getElementById('m-badge');
-  const d = document.getElementById('m-dot');
-  b.className = 'badge '+state;
-  document.getElementById('m-badge-txt').textContent = txt;
-  d.className = 'dot'+(state==='on'?' blink':'');
-}
-
-// ═══════════════════════════════════════════════════
-//  VIEWER: connect
-// ═══════════════════════════════════════════════════
-async function connectViewer() {
-  const code = document.getElementById('v-code-input').value.trim().toUpperCase();
-  if (code.length < 6) {
-    showAlert('v-alert','⚠️ Ingresa el código completo de 6 caracteres.','err'); return;
-  }
-  hideAlert('v-alert');
-  document.getElementById('v-spin').style.display='block';
-  document.getElementById('v-code-wrap').style.display='none';
-  setViewBadge('wt','Conectando con el repartidor…');
 
   try {
-    if (!myPeer || myPeer.destroyed) {
-      myPeer = await initPeer(); // random id for viewer
-    }
-    viewerConn = myPeer.connect('MOTO-'+code, { reliable:true });
-
-    viewerConn.on('open', () => {
-      document.getElementById('v-spin').style.display='none';
-      setViewBadge('on','🟢 Conectado · Esperando GPS…');
-      showAlert('v-alert','✅ Conectado. Esperando posición del repartidor…','suc');
-    });
-
-    viewerConn.on('data', onGPSData);
-
-    viewerConn.on('close', () => {
-      setViewBadge('wt','Desconectado');
-      showAlert('v-alert','⚠️ Se perdió la conexión con el repartidor.','err');
-      document.getElementById('v-state').textContent='Desconectado';
-    });
-
-    viewerConn.on('error', e => {
-      document.getElementById('v-spin').style.display='none';
-      document.getElementById('v-code-wrap').style.display='block';
-      showAlert('v-alert','❌ No se pudo conectar. Verifica el código o que el repartidor haya abierto la app.','err');
-      setViewBadge('wt','Error de conexión');
-    });
-
-    // Timeout
-    setTimeout(() => {
-      if (!viewerConn.open) {
-        document.getElementById('v-spin').style.display='none';
-        document.getElementById('v-code-wrap').style.display='block';
-        showAlert('v-alert','❌ Tiempo agotado. ¿El repartidor ya abrió la app y activó el GPS?','err');
-        setViewBadge('wt','Sin respuesta');
+    // Intentamos obtener la posición para disparar el permiso del navegador
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { 
+        console.log("Permiso concedido");
+        // Aquí llamarías a tu función original startGPS()
+        document.getElementById('m-status').innerText = "🟢 GPS Activo";
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          mostrarAyuda();
+        }
       }
-    }, 12000);
-
-  } catch(e) {
-    document.getElementById('v-spin').style.display='none';
-    document.getElementById('v-code-wrap').style.display='block';
-    showAlert('v-alert','❌ Error de red. Verifica tu internet.','err');
+    );
+  } catch (e) {
+    console.error(e);
   }
 }
 
-function onGPSData(data) {
-  const { lat, lng, speed, acc, time } = data;
-  hideAlert('v-alert');
-  setViewBadge('on','🟢 Repartidor en línea');
-  document.getElementById('v-speed').textContent = speed+' km/h';
-  document.getElementById('v-acc').textContent   = acc+' m';
-  document.getElementById('v-time').textContent  = time;
-  document.getElementById('v-state').textContent = '🟢 En movimiento';
-
-  // Update Google Maps embed
-  const iframe = document.getElementById('v-map-iframe');
-  const empty  = document.getElementById('v-map-empty');
-  const src = `https://maps.google.com/maps?q=${lat},${lng}&z=17&output=embed`;
-  empty.style.display='none';
-  iframe.style.display='block';
-  iframe.src = src;
-
-  // Show open button
-  const btn = document.getElementById('v-maps-btn');
-  btn.style.display='block';
-  btn.dataset.lat = lat;
-  btn.dataset.lng = lng;
+function mostrarAyuda() {
+  document.getElementById('modal-ayuda').style.display = 'flex';
 }
 
-function setViewBadge(state, txt) {
-  const b = document.getElementById('v-badge');
-  const d = document.getElementById('v-dot');
-  b.className = 'badge '+state;
-  document.getElementById('v-badge-txt').textContent = txt;
-  d.className = 'dot'+(state!=='off'?' blink':'');
+function cerrarAyuda() {
+  document.getElementById('modal-ayuda').style.display = 'none';
 }
-
-function openGMaps() {
-  const btn = document.getElementById('v-maps-btn');
-  window.open(`https://www.google.com/maps?q=${btn.dataset.lat},${btn.dataset.lng}`, '_blank');
-}
-
-// ═══════════════════════════════════════════════════
-//  UTILS
-// ═══════════════════════════════════════════════════
-function randomCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let c='';
-  for(let i=0;i<6;i++) c+=chars[Math.floor(Math.random()*chars.length)];
-  return c;
-}
-
-function copyCode() {
-  const code = document.getElementById('m-code').textContent;
-  const btn  = document.getElementById('m-copybtn');
-  navigator.clipboard?.writeText(code).catch(()=>{});
-  btn.textContent='✅ ¡Copiado!'; btn.className='copybtn ok';
-  setTimeout(()=>{ btn.textContent='📋 Copiar código'; btn.className='copybtn'; }, 2500);
-}
-
-function showAlert(id, msg, type) {
-  const el = document.getElementById(id);
-  el.textContent = msg; el.className = 'alert '+type;
-}
-function hideAlert(id) { document.getElementById(id).className='alert'; }
-
-function cleanup() {
-  stopGPS();
-  if (viewerConn) { try { viewerConn.close(); } catch(e){} viewerConn=null; }
-  connections.forEach(c => { try { c.close(); } catch(e){} });
-  connections = [];
-  if (myPeer && !myPeer.destroyed) { try { myPeer.destroy(); } catch(e){} myPeer=null; }
-}
-
-// Auto-init peer on load for speed
-window.addEventListener('load', () => {
-  // Just warm up the peer connection so it's fast when user picks mode
-  setTimeout(() => {
-    const warmup = new Peer(PEER_CFG);
-    warmup.on('open', () => {
-      setNetStatus(true);
-      warmup.destroy();
-    });
-    warmup.on('error', () => setNetStatus(false));
-  }, 800);
-});
 </script>
 </body>
 </html>
